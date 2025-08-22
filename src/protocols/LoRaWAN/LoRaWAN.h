@@ -82,8 +82,8 @@
 #define RADIOLIB_LORAWAN_CHANNEL_INDEX_NONE                     (0xFF >> 0)
 
 // recommended default settings
-#define RADIOLIB_LORAWAN_RECEIVE_DELAY_1_MS                     (1000)
-#define RADIOLIB_LORAWAN_RECEIVE_DELAY_2_MS                     ((RADIOLIB_LORAWAN_RECEIVE_DELAY_1_MS) + 1000)
+#define RADIOLIB_LORAWAN_RECEIVE_DELAY_1_MS                     (200)  // 修改成300 ms
+#define RADIOLIB_LORAWAN_RECEIVE_DELAY_2_MS                     ((RADIOLIB_LORAWAN_RECEIVE_DELAY_1_MS) + 200)// 修改成300 ms
 #define RADIOLIB_LORAWAN_RX1_DR_OFFSET                          (0)
 #define RADIOLIB_LORAWAN_JOIN_ACCEPT_DELAY_1_MS                 (5000)
 #define RADIOLIB_LORAWAN_JOIN_ACCEPT_DELAY_2_MS                 (6000)
@@ -892,6 +892,13 @@ class LoRaWANNode {
     */
     uint32_t getAFCntDown();
 
+    /*! 
+        \brief Reset the downlink frame counters (application and network)
+        This is unsafe and can possibly allow replay attacks using downlinks.
+        It mainly exists as part of the TS009 Specification Verification protocol.
+    */
+    void resetFCntDown();
+
     /*!
       \brief Returns the DevAddr of the device, regardless of OTAA or ABP mode
       \returns 4-byte DevAddr
@@ -1111,6 +1118,15 @@ class LoRaWANNode {
 
     // user-provided sleep callback
     SleepCb_t sleepCb = nullptr;
+    
+
+    // [新增] 标志位，用于跟踪是否是入网后的第一次数据上行
+    bool isFirstDataUplink = true;
+
+
+
+
+
 
     // this will reset the device credentials, so the device starts completely new
     void clearNonces();
@@ -1208,11 +1224,17 @@ class LoRaWANNode {
     // perform a single CAD operation for the under SF/CH combination. Returns either busy or otherwise.
     bool cadChannelClear();
 
-    // add all default channels on top of the current channels
-    void addDefaultChannels();
-
-    // get a complete 80-bit channel mask for current configuration
+    // (dynamic bands:) get or (fixed bands:) create a complete 80-bit channel mask for current configuration
     void getChannelPlanMask(uint64_t* chMaskGrp0123, uint32_t* chMaskGrp45);
+
+    // setup uplink/downlink channel data rates and frequencies
+    // for dynamic channels, there is a small set of predefined channels
+    // in case of JoinRequest, add some optional extra frequencies 
+    void selectChannelPlanDyn();
+
+    // setup uplink/downlink channel data rates and frequencies
+    // for fixed bands, we only allow one sub-band at a time to be selected
+    void selectChannelPlanFix();
 
     // get the number of available channels,
     // along with a 16-bit mask indicating which channels can be used next for uplink/downlink
